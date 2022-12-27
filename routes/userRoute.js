@@ -7,6 +7,9 @@ const authMiddleware = require("../middlewares/authMiddleware");
 //Signup
 router.post("/signup", userController.doSignup);
 
+//Send OTP
+router.post("/send-otp", userController.sendOtp);
+
 //Login
 router.post("/login", userController.doLogin);
 

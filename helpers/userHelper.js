@@ -1,6 +1,7 @@
 const userModel = require("../models/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require('jsonwebtoken')
+const {validateEmail} = require('./validation')
 
 //Do signup
 exports.doSignup = (data) => {

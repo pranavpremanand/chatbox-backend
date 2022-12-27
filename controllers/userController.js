@@ -4,6 +4,59 @@ const postModel = require("../models/postModel");
 const { updateOne } = require("../models/userModel");
 const user = require("../models/userModel");
 const userModel = require("../models/userModel");
+const {
+  validateEmail,
+  validateLength,
+  validateWordCount,
+} = require("../helpers/validation");
+const otpHelper = require("../services/userOtpService");
+
+//Send OTP
+exports.sendOtp = async (req, res) => {
+  try {
+    const { email, username, fullName, password } = req.body;
+    const emailExist = await userModel.findOne({ email: email });
+    const usernameExist = await userModel.findOne({ username: username });
+    if (emailExist) {
+      res.status(200).send({ message: "Email already exist", success: false });
+    } else if (usernameExist) {
+      res
+        .status(200)
+        .send({ message: "Username already exist", success: false });
+    } else if (!validateEmail(email)) {
+      res
+        .status(200)
+        .send({ message: "Invalid email address", success: false });
+    } else if (!validateLength(username, 3, 16)) {
+      res.status(200).send({
+        message: "username required minimum 3 to 16 characters",
+        success: false,
+      });
+    } else if (!validateLength(fullName, 3, 16)) {
+      res.status(200).send({
+        message: "Full name required minimum 3 to 16 characters",
+        success: false,
+      });
+    } else if (!validateLength(password, 6, 16)) {
+      res.status(200).send({
+        message: "Password required minimum 3 to 16 characters",
+        success: false,
+      });
+    } else {
+      otpHelper
+        .sendOtp(email)
+        .then((response) => {
+          res
+            .status(200)
+            .send({ message: "OTP sent", response: response, success: true });
+        })
+        .catch((err) => console.log("ERROR", err));
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({ success: false });
+  }
+};
 
 //Do signup
 exports.doSignup = (req, res) => {
@@ -141,14 +194,17 @@ exports.getPosts = async (req, res, next) => {
 exports.deletePost = async (req, res, next) => {
   try {
     console.log(req.params.id);
-    const response = await postModel.updateOne(
-      { _id: req.params.id },
-      { $set: { isDeleted: true } }
-    );
-    console.log("RESPONSE", response);
-    response
-      ? res.status(200).send({ success: true })
-      : res.status(200).send({ success: false });
+    const post = await postModel.findOne({ _id: req.params.id });
+    let response = {};
+    if (post.userId === req.body.userId) {
+      response = await postModel.updateOne(
+        { _id: req.params.id },
+        { $set: { isDeleted: true } }
+      );
+      res.status(200).send({message:'Post deleted successfully', success: true });
+    } else {
+      res.status(200).send({message:`You can't delete posts of others`, success: false });
+    }
   } catch (err) {
     res.status(500).send({ success: false });
   }
@@ -511,36 +567,71 @@ exports.getUserPhotos = async (req, res) => {
 };
 
 //Add cover pic
-exports.addCover =async (req,res)=>{
-  try{
-    console.log('"HELLOOOOOOOOOOOOO',req.body)
-    await userModel.updateOne({_id:req.body.userId},{$set:{coverPic:req.body.cover}}).then(response=>{
-      console.log('SUccess')
-      res.status(200).send({success:true})
-    }).catch(err=>{
-      console.log('Failed')
-      res.status(200).send({success:false})
-    })
-  }catch(err){
-    res.status(500).send({success:false})
+exports.addCover = async (req, res) => {
+  try {
+    console.log('"HELLOOOOOOOOOOOOO', req.body);
+    await userModel
+      .updateOne(
+        { _id: req.body.userId },
+        { $set: { coverPic: req.body.cover } }
+      )
+      .then((response) => {
+        console.log("SUccess");
+        res.status(200).send({ success: true });
+      })
+      .catch((err) => {
+        console.log("Failed");
+        res.status(200).send({ success: false });
+      });
+  } catch (err) {
+    res.status(500).send({ success: false });
   }
-}
+};
 
 //Add profile pic
-exports.addProfilePic =async (req,res)=>{
-  try{
-    await userModel.updateOne({_id:req.body.userId},{$set:{profilePic:req.body.profilePic}}).then(response=>{
-      res.status(200).send({success:true})
-    }).catch(err=>{
-      res.status(200).send({success:false})
-    })
-  }catch(err){
-    res.status(500).send({success:false})
+exports.addProfilePic = async (req, res) => {
+  try {
+    await userModel
+      .updateOne(
+        { _id: req.body.userId },
+        { $set: { profilePic: req.body.profilePic } }
+      )
+      .then((response) => {
+        res.status(200).send({ success: true });
+      })
+      .catch((err) => {
+        res.status(200).send({ success: false });
+      });
+  } catch (err) {
+    res.status(500).send({ success: false });
   }
-}
+};
 
 //Update profile
-exports.updateProfile = async(req,res)=>{
-  console.log(req.body)
-  // await userModel.updateOne({})
-}
+exports.updateProfile = async (req, res) => {
+  try {
+    console.log(req.body);
+    await userModel
+      .updateOne(
+        { _id: req.body.userId },
+        {
+          $set: {
+            // username:req.body.username,
+            // fullName:req.body.fullName,
+            about: req.body.about,
+            worksAt: req.body.worksAt,
+            livesIn: req.body.livesIn,
+            relationship: req.body.relationship,
+          },
+        }
+      )
+      .then((response) => {
+        res.status(200).send({ success: true });
+      })
+      .catch((err) => {
+        res.status(200).send({ success: false });
+      });
+  } catch (err) {
+    res.status(500).send({ success: false });
+  }
+};
