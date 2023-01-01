@@ -69,4 +69,7 @@ router.post("/add-profile-pic",authMiddleware,userController.addProfilePic)
 
 //Update profile
 router.post('/update-profile',authMiddleware,userController.updateProfile)
+
+//Get user data
+router.get('/get-user/:user',authMiddleware,userController.getUser)
 module.exports = router;

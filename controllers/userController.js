@@ -635,3 +635,13 @@ exports.updateProfile = async (req, res) => {
     res.status(500).send({ success: false });
   }
 };
+
+//Get user data
+exports.getUser = async(req,res)=>{
+  try{
+    const userData = await userModel.findOne({_id:req.params.user})
+    res.status(200).json(userData)
+  }catch(err){
+    res.status(500).json(err)
+  }
+}
