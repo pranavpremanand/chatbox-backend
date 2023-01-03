@@ -59,6 +59,26 @@ const userSchema = new mongoose.Schema({
     relationship:{
         type:String
     },
+    unseenNotifications:[{
+        content:String,
+        date: Date,
+        userId:{
+            type:mongoose.Schema.Types.ObjectId,ref:'users',
+        },
+        postId:{
+            type:mongoose.Schema.Types.ObjectId,ref:'posts',
+        },
+    }],
+    seenNotifications:[{
+        content:String,
+        date: Date,
+        userId:{
+            type:mongoose.Schema.Types.ObjectId,ref:'users',
+        },
+        postId:{
+            type:mongoose.Schema.Types.ObjectId,ref:'posts',
+        },
+    }],
 },{timestamps:true})
 
 const user = mongoose.model('users',userSchema)

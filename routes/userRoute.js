@@ -28,6 +28,9 @@ router.get("/delete-post/:id", authMiddleware, userController.deletePost);
 //Get users
 router.get("/get-users", authMiddleware, userController.getUsersData);
 
+//Get all users
+router.get("/all-users", authMiddleware, userController.getAllUsers);
+
 //Follow user
 router.get("/follow-user/:id", authMiddleware, userController.followUser);
 
@@ -72,4 +75,11 @@ router.post('/update-profile',authMiddleware,userController.updateProfile)
 
 //Get user data
 router.get('/get-user/:user',authMiddleware,userController.getUser)
+
+//Get notifications
+router.get('/notifications',authMiddleware,userController.getUnseenNotifications)
+
+//Seen notifications
+router.get('/seen-notifications',authMiddleware,userController.seenNotifications)
+
 module.exports = router;
