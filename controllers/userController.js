@@ -762,10 +762,15 @@ exports.seenNotifications = async (req, res) => {
         path: "seenNotifications",
         populate: ["userId", "postId"],
       })
-    // let notifications=user.seenNotifications
+    let notifications=data.seenNotifications
     // user.unseenNotifications.concat(user.seenNotifications)
-    // notifications = notifications.sort((one,two)=>two.date - one.date)
-    res.status(200).json(data.seenNotifications);
+    notifications = notifications.sort((one,two)=>two.date - one.date)
+  //   var out="[";
+  // for(var indx=0;indx<notifications.length-1;indx++){
+  //   out+=JSON.stringify(notifications[indx],null,4)+",";
+  // }
+  // out+=JSON.stringify(notifications[notifications.length-1],null,4)+"]";
+    res.status(200).json(data);
   } catch (err) {
     console.log(err)
     res.status(500).json(err);
