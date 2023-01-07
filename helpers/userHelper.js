@@ -5,7 +5,7 @@ const {validateEmail} = require('./validation')
 
 //Do signup
 exports.doSignup = (data) => {
-  console.log(data);
+  // console.log(data);
   const response = {};
   return new Promise(async (res, rej) => {
     try {
@@ -55,12 +55,14 @@ exports.doLogin = (data) => {
         if (email || username) {
           let user;
           email ? (user = email) : (user = username);
+          console.log(user,'USER Data')
           if(!user.isAdmin){
           await bcrypt
             .compare(data.password, user.password)
             .then(async(status) => {
                 if(status){
                   // Create JWT
+                  console.log("USERID HERE",user._id)
                   const accessToken = jwt.sign(
                     {'id':user._id},
                     process.env.ACCESS_TOKEN_SECRET,

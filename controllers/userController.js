@@ -97,7 +97,8 @@ exports.doLogin = (req, res) => {
 //Get user info
 exports.getUserInfo = async (req, res) => {
   try {
-    const user = await userModel.findOne({ id: req.body.userId });
+    // console.log(req.userId,'USER ID Here')
+    const user = await userModel.findOne({ id: req.userId });
     if (!user) {
       res.status(200).send({ message: "User does not exist", success: false });
     } else {
@@ -124,9 +125,9 @@ exports.uploadPost = async (req, res, next) => {
   const data = {
     image: req.body.image,
     description: req.body.postData.description,
-    userId: req.body.userId,
+    userId: req.userId,
   };
-  console.log("DATA", data);
+  // console.log("DATA", data);
   const post = new postModel(data);
   await post
     .save()
@@ -142,7 +143,7 @@ exports.uploadPost = async (req, res, next) => {
 
 //Get posts
 exports.getPosts = async (req, res, next) => {
-  console.log(req.body.userId, "USER ID");
+  // console.log(req.userId, "USER ID");
   const posts = await userModel.aggregate([
     {
       $lookup: {
@@ -172,7 +173,7 @@ exports.getPosts = async (req, res, next) => {
         profilePic: 1,
         posts: 1,
         isLiked: {
-          $in: [mongoose.Types.ObjectId(req.body.userId), "$posts.likedUsers"],
+          $in: [mongoose.Types.ObjectId(req.userId), "$posts.likedUsers"],
         },
       },
     },
@@ -182,16 +183,19 @@ exports.getPosts = async (req, res, next) => {
       },
     },
   ]);
-  res.status(200).send({ posts });
+  const user = await userModel.findOne({ _id: req.userId });
+  res.status(200).send({ posts: posts, user: user });
 };
 
 //Delete post
 exports.deletePost = async (req, res, next) => {
   try {
-    console.log(req.params.id);
+    // console.log(req.params.id);
     const post = await postModel.findOne({ _id: req.params.id });
     let response = {};
-    if (post.userId === req.body.userId) {
+    const userId = post.userId.toString();
+    console.log(userId, "USERID", req.userId);
+    if (userId === req.userId) {
       response = await postModel.updateOne(
         { _id: req.params.id },
         { $set: { isDeleted: true } }
@@ -212,10 +216,10 @@ exports.deletePost = async (req, res, next) => {
 //Get not following users data
 exports.getUsersData = async (req, res, next) => {
   try {
-    let user = await userModel.findOne({ _id: req.body.userId });
+    let user = await userModel.findOne({ _id: req.userId });
     user = user.following;
     const users = await userModel.find({
-      $and: [{ _id: { $ne: req.body.userId } }, { _id: { $nin: user } }],
+      $and: [{ _id: { $ne: req.userId } }, { _id: { $nin: user } }],
     });
     // console.log(users);
     if (users) {
@@ -230,9 +234,9 @@ exports.getUsersData = async (req, res, next) => {
 //Get all users
 exports.getAllUsers = async (req, res, next) => {
   try {
-    let user = await userModel.findOne({ _id: req.body.userId });
+    let user = await userModel.findOne({ _id: req.userId });
     user = user.following;
-    const users = await userModel.find({ _id: { $ne: req.body.userId } });
+    const users = await userModel.find({ _id: { $ne: req.userId } });
     // console.log(users);
     if (users) {
       res.status(200).send({ success: true, data: users });
@@ -248,23 +252,23 @@ exports.getAllUsers = async (req, res, next) => {
 exports.followUser = async (req, res) => {
   try {
     let user = await userModel.findOne({ _id: req.params.id });
-    // let loggedUser = await userModel.findOne({_id:req.body.userId})
+    // let loggedUser = await userModel.findOne({_id:req.userId})
     user = { ...user, isFollowed: true };
     await userModel
       .updateOne(
-        { _id: req.body.userId },
+        { _id: req.userId },
         { $addToSet: { following: req.params.id } }
       )
       .then(async () => {
         await userModel
           .updateOne(
             { _id: req.params.id },
-            { $addToSet: { followers: req.body.userId } }
+            { $addToSet: { followers: req.userId } }
           )
           .then(async () => {
             const data = {
               content: `started following you`,
-              userId: req.body.userId,
+              userId: req.userId,
               date: new Date(),
               seen: false,
             };
@@ -290,12 +294,12 @@ exports.followUser = async (req, res) => {
 //Get following users
 exports.getFollowingUsers = async (req, res) => {
   try {
-    console.log(req.body.userId);
+    // console.log(req.userId);
 
     const users = await userModel.aggregate([
       {
         $match: {
-          _id: mongoose.Types.ObjectId(req.body.userId),
+          _id: mongoose.Types.ObjectId(req.userId),
         },
       },
       {
@@ -308,7 +312,7 @@ exports.getFollowingUsers = async (req, res) => {
             {
               $project: {
                 isFollowed: {
-                  $in: [mongoose.Types.ObjectId(req.body.userId), "$followers"],
+                  $in: [mongoose.Types.ObjectId(req.userId), "$followers"],
                 },
                 profilePic: 1,
                 fullName: 1,
@@ -334,12 +338,12 @@ exports.getFollowingUsers = async (req, res) => {
 //Get followers
 exports.getFollowers = async (req, res) => {
   try {
-    console.log(req.body.userId);
+    // console.log(req.userId);
 
     const users = await userModel.aggregate([
       {
         $match: {
-          _id: mongoose.Types.ObjectId(req.body.userId),
+          _id: mongoose.Types.ObjectId(req.userId),
         },
       },
       {
@@ -352,7 +356,7 @@ exports.getFollowers = async (req, res) => {
             {
               $project: {
                 isFollowed: {
-                  $in: [mongoose.Types.ObjectId(req.body.userId), "$following"],
+                  $in: [mongoose.Types.ObjectId(req.userId), "$following"],
                 },
                 profilePic: 1,
                 fullName: 1,
@@ -379,13 +383,10 @@ exports.getFollowers = async (req, res) => {
 exports.unfollowUser = async (req, res) => {
   try {
     let user = await userModel.findOne({ _id: req.params.id });
-    // let loggedUser = await userModel.findOne({_id:req.body.userId})
+    // let loggedUser = await userModel.findOne({_id:req.userId})
     user = { ...user, isFollowed: false };
     await userModel
-      .updateOne(
-        { _id: req.body.userId },
-        { $pull: { following: req.params.id } }
-      )
+      .updateOne({ _id: req.userId }, { $pull: { following: req.params.id } })
       .then(async (response) => {
         await userModel.updateOne(
           { _id: req.params.id },
@@ -394,7 +395,7 @@ exports.unfollowUser = async (req, res) => {
               unseenNotifications: {
                 $and: [
                   { content: `started following you` },
-                  { userId: req.body.userId },
+                  { userId: req.userId },
                 ],
               },
             },
@@ -421,7 +422,7 @@ exports.unfollowUser = async (req, res) => {
 //Get who to follow
 exports.getOtherUsers = async (req, res) => {
   try {
-    const user = await userModel.findOne({ _id: req.body.userId });
+    const user = await userModel.findOne({ _id: req.userId });
     const notInFollowing = await userModel.find({
       $nor: [{ _id: user._id }, { _id: [...user.following] }],
     });
@@ -435,23 +436,23 @@ exports.getOtherUsers = async (req, res) => {
 exports.likePost = async (req, res) => {
   try {
     const liked = await postModel.findOne({
-      $and: [{ _id: req.params.postId }, { likedUsers: req.body.userId }],
+      $and: [{ _id: req.params.postId }, { likedUsers: req.userId }],
     });
     const post = await postModel.findOne({ _id: req.params.postId });
-    // const loggedUser =await userModel.findOne({_id:req.body.userId})
-    console.log(liked);
+    // const loggedUser =await userModel.findOne({_id:req.userId})
+    // console.log(liked);
     if (!liked) {
       const data = {
         content: `liked your post`,
-        userId: req.body.userId,
+        userId: req.userId,
         postId: req.params.postId,
         date: new Date(),
         seen: false,
       };
 
-      console.log(post.userId + " | " + req.body.userId);
+      // console.log(post.userId + " | " + req.userId);
 
-      if (post.userId !== req.body.userId) {
+      if (post.userId !== req.userId) {
         await userModel.updateOne(
           { _id: post.userId },
           { $push: { unseenNotifications: data } }
@@ -460,32 +461,26 @@ exports.likePost = async (req, res) => {
 
       await postModel.updateOne(
         { _id: req.params.postId },
-        { $push: { likedUsers: req.body.userId } }
+        { $push: { likedUsers: req.userId } }
       );
-
-      console.log("LIKED");
       res.status(200).send({ success: true, liked: true });
     } else {
       await postModel.updateOne(
         { _id: req.params.postId },
-        { $pull: { likedUsers: req.body.userId } }
+        { $pull: { likedUsers: req.userId } }
       );
-      if (post.userId !== req.body.userId) {
+      if (post.userId !== req.userId) {
         await userModel.updateOne(
           { _id: post.userId },
           {
             $pull: {
               unseenNotifications: {
-                $and: [
-                  { postId: req.params.postId },
-                  { userId: req.body.userId },
-                ],
+                $and: [{ postId: req.params.postId }, { userId: req.userId }],
               },
             },
           }
         );
       }
-      console.log("UNLIKED");
       res.status(200).send({ success: true, unliked: true });
     }
   } catch (err) {
@@ -497,13 +492,13 @@ exports.likePost = async (req, res) => {
 exports.addComment = async (req, res) => {
   try {
     const comment = {
-      userId: req.body.userId,
+      userId: req.userId,
       content: req.body.comment,
       date: new Date(),
     };
     const data = {
       content: `commented on your post`,
-      userId: req.body.userId,
+      userId: req.userId,
       postId: req.params.postId,
       date: new Date(),
       seen: false,
@@ -512,7 +507,7 @@ exports.addComment = async (req, res) => {
     await postModel
       .updateOne({ _id: req.params.postId }, { $push: { comments: comment } })
       .then(async (response) => {
-        if (userOfPost.userId !== req.body.userId) {
+        if (userOfPost.userId !== req.userId) {
           await userModel.updateOne(
             { _id: userOfPost.userId },
             { $push: { unseenNotifications: data } }
@@ -531,7 +526,7 @@ exports.addComment = async (req, res) => {
 //Get comments
 exports.getComments = async (req, res) => {
   try {
-    console.log("POST ID", req.params.postId);
+    // console.log("POST ID", req.params.postId);
     const comments = await postModel
       .findOne({ _id: req.params.postId })
       .populate({ path: "comments", populate: "userId" })
@@ -582,10 +577,10 @@ exports.deleteComment = async (req, res) => {
 //Get user posts
 exports.getUserPosts = async (req, res) => {
   try {
-    const user = await userModel.findOne({ _id: req.body.userId });
-    // const posts = await postModel.find({userId:req.body.userId})
+    const user = await userModel.findOne({ _id: req.userId });
+    // const posts = await postModel.find({userId:req.userId})
     const posts = await userModel.aggregate([
-      { $match: { _id: mongoose.Types.ObjectId(req.body.userId) } },
+      { $match: { _id: mongoose.Types.ObjectId(req.userId) } },
       {
         $lookup: {
           from: "posts",
@@ -614,10 +609,7 @@ exports.getUserPosts = async (req, res) => {
           profilePic: 1,
           posts: 1,
           isLiked: {
-            $in: [
-              mongoose.Types.ObjectId(req.body.userId),
-              "$posts.likedUsers",
-            ],
+            $in: [mongoose.Types.ObjectId(req.userId), "$posts.likedUsers"],
           },
         },
       },
@@ -641,7 +633,7 @@ exports.getUserPosts = async (req, res) => {
 //Get user photos
 exports.getUserPhotos = async (req, res) => {
   try {
-    const userPhotos = await postModel.find({ userId: req.body.userId });
+    const userPhotos = await postModel.find({ userId: req.userId });
     if (userPhotos) {
       res.status(200).send({ success: true, photos: userPhotos });
     } else {
@@ -655,18 +647,15 @@ exports.getUserPhotos = async (req, res) => {
 //Add cover pic
 exports.addCover = async (req, res) => {
   try {
-    console.log('"HELLOOOOOOOOOOOOO', req.body);
+    // console.log('"HELLOOOOOOOOOOOOO', req.body);
     await userModel
-      .updateOne(
-        { _id: req.body.userId },
-        { $set: { coverPic: req.body.cover } }
-      )
+      .updateOne({ _id: req.userId }, { $set: { coverPic: req.body.cover } })
       .then((response) => {
-        console.log("SUccess");
+        // console.log("SUccess");
         res.status(200).send({ success: true });
       })
       .catch((err) => {
-        console.log("Failed");
+        // console.log("Failed");
         res.status(200).send({ success: false });
       });
   } catch (err) {
@@ -679,7 +668,7 @@ exports.addProfilePic = async (req, res) => {
   try {
     await userModel
       .updateOne(
-        { _id: req.body.userId },
+        { _id: req.userId },
         { $set: { profilePic: req.body.profilePic } }
       )
       .then((response) => {
@@ -696,10 +685,10 @@ exports.addProfilePic = async (req, res) => {
 //Update profile
 exports.updateProfile = async (req, res) => {
   try {
-    console.log(req.body);
+    // console.log(req.body);
     await userModel
       .updateOne(
-        { _id: req.body.userId },
+        { _id: req.userId },
         {
           $set: {
             // username:req.body.username,
@@ -735,10 +724,10 @@ exports.getUser = async (req, res) => {
 //Get Notifications
 exports.getUnseenNotifications = async (req, res) => {
   try {
-    const user = await userModel.findOne({ _id: req.body.userId }).populate({
+    const user = await userModel.findOne({ _id: req.userId }).populate({
       path: "unseenNotifications",
       populate: ["userId", "postId"],
-    })
+    });
     // .sort({'unseenNotifications.date':-1});
     // const unseenNotifications = user.unseenNotifications.sort(
     //   (one, two) => two.date - one.date
@@ -746,37 +735,39 @@ exports.getUnseenNotifications = async (req, res) => {
     // const seenNotifications = user.seenNotifications.sort(
     //   (one, two) => two.date - one.date
     // );
-    let notifications=user.unseenNotifications
+    let notifications = user.unseenNotifications;
     // notifications = notifications.sort((one,two)=>two.date - one.date)
     // console.log(notifications,'notifications')
     res.status(200).json(notifications);
   } catch (err) {
     res.status(500).json(err);
-    console.log(err)
+    console.log(err);
   }
 };
 
 //Seen Notifications
 exports.seenNotifications = async (req, res) => {
   try {
-    let user = await userModel.findOne({ _id: req.body.userId });
-    user = await userModel.findOneAndUpdate(
-      { _id: req.body.userId },
+    const user = await userModel.findOne({ _id: req.userId });
+    await userModel.updateOne(
+      { _id: req.userId },
       { $push: { seenNotifications: user.unseenNotifications } }
-    ).populate({
-      path: "seenNotifications",
-      populate: ["userId", "postId"],
-    })
-     await userModel.updateOne(
-      { _id: req.body.userId },
-      { $unset: { unseenNotifications: [] } }
     );
-    let notifications=user.seenNotifications
+    const data = await userModel
+      .findOneAndUpdate(
+        { _id: req.userId },
+        { $unset: { unseenNotifications: [] } }
+      )
+      .populate({
+        path: "seenNotifications",
+        populate: ["userId", "postId"],
+      })
+    // let notifications=user.seenNotifications
     // user.unseenNotifications.concat(user.seenNotifications)
     // notifications = notifications.sort((one,two)=>two.date - one.date)
-    console.log(notifications,'notifications')
-    res.status(200).json(notifications);
+    res.status(200).json(data.seenNotifications);
   } catch (err) {
+    console.log(err)
     res.status(500).json(err);
   }
 };

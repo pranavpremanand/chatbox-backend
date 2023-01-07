@@ -3,22 +3,22 @@ const jwt = require("jsonwebtoken");
 module.exports = async (req, res, next) => {
   try {
     let token;
-    // console.log(req.headers)
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
-      token = req.headers.authorization.split(" ")[1];
-    }
+    // console.log(req.headers,'Here user Token')
+    // if (
+    //   req.headers.authorization &&
+    //   req.headers.authorization.startsWith("Bearer")
+    // ) {
+      token = req.headers.authorization
+    // }
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
       if (err) {
         console.log("error",err);
         return res.status(401).send({
-          message: "Auth failed",
+          message: "AUTH FAILED",
           success: false,
         });
       } else {
-        req.body.userId = decoded.id;
+        req.userId = decoded.id;
         next();
       }
     });
