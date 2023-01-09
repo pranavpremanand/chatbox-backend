@@ -551,20 +551,6 @@ exports.deleteComment = async (req, res) => {
     );
     const post = await postModel.findOne({ _id: req.params.postId });
     if (response) {
-      // await userModel.updateOne(
-      //   { _id: post.userId },
-      //   {
-      //     $pull: {
-      //       unseenNotifications: {
-      //         $and: [
-      //           { content: "commented on your post" },
-      //           { postId: req.params.postId },
-      //         ],
-      //       },
-      //     },
-      //   },
-      //   {multi: false}
-      // );
       res.status(200).send({ success: true });
     } else {
       res.status(200).send({ success: false });
@@ -776,3 +762,16 @@ exports.seenNotifications = async (req, res) => {
     res.status(500).json(err);
   }
 };
+
+//Search user
+exports.searchUser = async(req,res)=>{
+  try{
+    const users = await userModel.find({username:{$regex:req.params.text}})
+    const filtered = users.filter((user)=>user._id.toString() !== req.userId)
+    const currentUser = await userModel.findOne({_id:req.userId})
+    res.status(200).json(filtered)
+  }catch(err){
+    // console.log(err,'error')
+    res.status(500).json(err)
+  }
+}

@@ -82,4 +82,6 @@ router.get('/notifications',authMiddleware,userController.getUnseenNotifications
 //Seen notifications
 router.get('/seen-notifications',authMiddleware,userController.seenNotifications)
 
+//Search user
+router.get("/search-user/:text",authMiddleware,userController.searchUser)
 module.exports = router;
