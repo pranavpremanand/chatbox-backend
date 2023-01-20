@@ -1,7 +1,7 @@
 const userModel = require("../models/userModel");
 const bcrypt = require("bcrypt");
-const jwt = require('jsonwebtoken')
-const {validateEmail} = require('./validation')
+const jwt = require("jsonwebtoken");
+const { validateEmail } = require("./validation");
 
 //Do signup
 exports.doSignup = (data) => {
@@ -45,56 +45,70 @@ exports.doSignup = (data) => {
 
 //Do login
 exports.doLogin = (data) => {
+  if (data.loginWithOtp) {
+    data.usernameOrEmail = data.email;
+  }
   const response = {};
   return new Promise(async (res, rej) => {
-    try{
-        const email = await userModel.findOne({ email: data.usernameOrEmail });
-        const username = await userModel.findOne({
-          username: data.usernameOrEmail,
-        });
-        if (email || username) {
-          let user;
-          email ? (user = email) : (user = username);
-          console.log(user,'USER Data')
-          if(!user.isAdmin){
+    try {
+      const email = await userModel.findOne({ email: data.usernameOrEmail });
+      const username = await userModel.findOne({
+        username: data.usernameOrEmail,
+      });
+      if (email || username) {
+        // console.log(email, "email user", username, "username user");
+        let user;
+        email ? (user = email) : (user = username);
+        // console.log(user,'USER Data')
+        if (user) {
+          // Create JWT
+          // console.log("USERID HERE",user._id)
+          // const refreshToken = jwt.sign(
+          //   {'id':user.id},
+          //   process.env.REFRESH_TOKEN_SECRET,
+          //   {expiresIn:'1d'}
+          // )
+          const accessToken = jwt.sign(
+            { id: user._id },
+            process.env.ACCESS_TOKEN_SECRET,
+            { expiresIn: "1d" }
+          );
+
+          if (data.loginWithOtp) {
+            response.user = user;
+            response.accessToken = accessToken;
+            // response.refreshToken = refreshToken
+            response.success = true;
+            response.otpLoginSuccess = true;
+            res(response);
+          }
           await bcrypt
             .compare(data.password, user.password)
-            .then(async(status) => {
-                if(status){
-                  // Create JWT
-                  console.log("USERID HERE",user._id)
-                  const accessToken = jwt.sign(
-                    {'id':user._id},
-                    process.env.ACCESS_TOKEN_SECRET,
-                    {expiresIn:'1d'}
-                  )
-                  // const refreshToken = jwt.sign(
-                  //   {'id':user.id},
-                  //   process.env.REFRESH_TOKEN_SECRET,
-                  //   {expiresIn:'1d'}
-                  // )
-                  
-                    // const currentUser = {...user,refreshToken}
-                    response.user = user;
-                    response.accessToken = accessToken
-                    // response.refreshToken = refreshToken
-                    response.status = status;
-                    res(response)
-                }else{
-                    response.message = 'Entered password is incorrect.'
-                    res(response)
-                }
-            })
-          }else{
-            response.message = 'User does not exist.'
-            res(response)
-          }
-        }else{
-            response.message = 'User does not exist.'
-            res(response)
+            .then(async (status) => {
+              if (status) {
+                response.user = user;
+                response.accessToken = accessToken;
+                // response.refreshToken = refreshToken
+                response.success = status;
+                res(response);
+              } else {
+                console.log('entered password is incorrect')
+                response.message = "Entered password is incorrect.";
+                res(response);
+              }
+            });
+        } else {
+          console.log("no user");
+          response.message = "User does not exist.";
+          res(response);
         }
-    }catch(err){
-        rej(err)
+      } else {
+        console.log('no user exist')
+        response.message = "User does not exist.";
+        res(response);
+      }
+    } catch (err) {
+      rej(err);
     }
   });
 };

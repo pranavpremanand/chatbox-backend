@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
 const verifyJWT = require("../middlewares/verifyJWT");
-const authMiddleware = require("../middlewares/authMiddleware");
+const authMiddleware = require("../middlewares/userAuth");
+const { checkUserBlock, checkUserStatus } = require("../middlewares/checkBlock");
 
 //Signup
 router.post("/signup", userController.doSignup);
@@ -10,8 +11,17 @@ router.post("/signup", userController.doSignup);
 //Send OTP
 router.post("/send-otp", userController.sendOtp);
 
+//Forgot password - send OTP
+router.post('/otp-login',userController.sendLoginOtp)
+
+//Change password
+router.post("/change-password",userController.changePassword)
+
 //Login
 router.post("/login", userController.doLogin);
+
+//Check user active status
+router.get('/check-status/:userId',checkUserStatus)
 
 //Get user data
 router.get("/get-user-info-by-id", authMiddleware, userController.getUserInfo);
@@ -59,10 +69,10 @@ router.get('/get-comments/:postId',authMiddleware,userController.getComments)
 router.get("/delete-comment/:commentId/:postId",authMiddleware,userController.deleteComment)
 
 //Get user posts
-router.get("/get-user-posts",authMiddleware,userController.getUserPosts)
+router.get("/get-user-posts/:userId",authMiddleware,userController.getUserPosts)
 
 //Get user photos
-router.get('/get-user-photos',authMiddleware,userController.getUserPhotos)
+router.get('/get-user-photos/:userId',authMiddleware,userController.getUserPhotos)
 
 //Add cover pic
 router.post("/add-cover",authMiddleware,userController.addCover)
@@ -83,5 +93,15 @@ router.get('/notifications',authMiddleware,userController.getUnseenNotifications
 router.get('/seen-notifications',authMiddleware,userController.seenNotifications)
 
 //Search user
-router.get("/search-user/:text",authMiddleware,userController.searchUser)
+router.get("/search-user/:keywords",authMiddleware,userController.searchUser)
+
+//Report post
+router.post('/report-post',authMiddleware,userController.reportPost)
+
+//Send verification request
+router.get("/request-verification/:userId",authMiddleware,userController.requestVerification)
+
+//Save or unsave post
+router.get('/save-post/:postId',authMiddleware,userController.saveOrUnsavePost)
+
 module.exports = router;

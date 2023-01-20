@@ -3,11 +3,6 @@ const jwt = require("jsonwebtoken");
 module.exports = async (req, res, next) => {
   try {
     let token;
-    // console.log(req.headers,'Here user Token')
-    // if (
-    //   req.headers.authorization &&
-    //   req.headers.authorization.startsWith("Bearer")
-    // ) {
       token = req.headers.authorization
     // }
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
@@ -18,7 +13,7 @@ module.exports = async (req, res, next) => {
           success: false,
         });
       } else {
-        req.userId = decoded.id;
+        req.admin = decoded.id;
         next();
       }
     });

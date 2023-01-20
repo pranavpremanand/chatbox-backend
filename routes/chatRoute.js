@@ -1,6 +1,6 @@
 const express = require('express')
 const { createChat, userChats, findChat, currentChat } = require('../controllers/chatController')
-const authMiddleware = require('../middlewares/authMiddleware')
+const authMiddleware = require('../middlewares/userAuth')
 const router = express.Router()
 
 router.post('/',authMiddleware, createChat)

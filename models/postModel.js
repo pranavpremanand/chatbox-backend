@@ -12,6 +12,12 @@ const postSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    reportedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "users",
+      },
+    ],
     comments: [
       {
         content: {
@@ -25,21 +31,21 @@ const postSchema = new mongoose.Schema(
           type: Date,
           default: new Date(),
         },
-        replies: [
-          {
-            content: {
-              type: String,
-            },
-            userId: {
-              type: mongoose.Schema.Types.ObjectId,
-              ref: "users",
-            },
-            date: {
-              type: Date,
-              default: new Date(),
-            },
-          },
-        ],
+        // replies: [
+        //   {
+        //     content: {
+        //       type: String,
+        //     },
+        //     userId: {
+        //       type: mongoose.Schema.Types.ObjectId,
+        //       ref: "users",
+        //     },
+        //     date: {
+        //       type: Date,
+        //       default: new Date(),
+        //     },
+        //   },
+        // ],
         likes: [
           {
             type: mongoose.Schema.Types.ObjectId,
@@ -48,17 +54,17 @@ const postSchema = new mongoose.Schema(
         ],
       },
     ],
-    reactions: [
-      {
-        rType: {
-          type: String,
-        },
-        userId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "users",
-        },
-      },
-    ],
+    // reactions: [
+    //   {
+    //     rType: {
+    //       type: String,
+    //     },
+    //     userId: {
+    //       type: mongoose.Schema.Types.ObjectId,
+    //       ref: "users",
+    //     },
+    //   },
+    // ],
     likedUsers: [
       {
         type: mongoose.Schema.Types.ObjectId,

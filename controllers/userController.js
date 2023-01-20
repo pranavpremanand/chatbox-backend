@@ -10,6 +10,9 @@ const {
   validateWordCount,
 } = require("../helpers/validation");
 const otpHelper = require("../services/userOtpService");
+const reportModel = require("../models/reportModel");
+const bcrypt = require("bcrypt");
+const savedPostModel = require("../models/savedPostModel");
 
 //Send OTP
 exports.sendOtp = async (req, res) => {
@@ -23,25 +26,6 @@ exports.sendOtp = async (req, res) => {
       res
         .status(200)
         .send({ message: "Username already exist", success: false });
-    } else if (!validateEmail(email)) {
-      res
-        .status(200)
-        .send({ message: "Invalid email address", success: false });
-    } else if (!validateLength(username, 3, 16)) {
-      res.status(200).send({
-        message: "username required minimum 3 to 16 characters",
-        success: false,
-      });
-    } else if (!validateLength(fullName, 3, 16)) {
-      res.status(200).send({
-        message: "Full name required minimum 3 to 16 characters",
-        success: false,
-      });
-    } else if (!validateLength(password, 6, 16)) {
-      res.status(200).send({
-        message: "Password required minimum 3 to 16 characters",
-        success: false,
-      });
     } else {
       otpHelper
         .sendOtp(email)
@@ -55,6 +39,43 @@ exports.sendOtp = async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).send({ success: false });
+  }
+};
+
+//Forgot password - send OTP
+exports.sendLoginOtp = async (req, res) => {
+  try {
+    console.log(req.body);
+    const user = await userModel.findOne({ email: req.body.email });
+    if (user) {
+      const response = await otpHelper.sendOtp(user.email);
+      if (response) {
+        res
+          .status(200)
+          .json({ message: "OTP sent", response: response, success: true });
+      }
+    } else {
+      res.status(200).json({ message: "User does not exist" });
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+};
+
+//Change password
+exports.changePassword = async (req, res) => {
+  let { email, newPassword } = req.body;
+  try {
+    newPassword = await bcrypt.hash(newPassword, 10);
+    const user = await userModel.findOneAndUpdate(
+      { email: email },
+      { $set: { password: newPassword } }
+    );
+    res.status(204).json(user);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
   }
 };
 
@@ -73,21 +94,20 @@ exports.doSignup = (req, res) => {
 };
 
 //Do login
-exports.doLogin = (req, res) => {
+exports.doLogin = (req, res, next) => {
   userHelper
     .doLogin(req.body)
     .then((response) => {
       if (response.user) {
-        res.status(200).send({
-          user: response.user,
-          accessToken: response.accessToken,
-          success: true,
-        });
+        console.log("user exist");
+        res.status(200).send(response);
       } else {
+        console.log("no user here");
         res.status(200).send({ message: response.message, success: false });
       }
     })
     .catch((err) => {
+      console.log(err);
       res
         .status(500)
         .send({ message: "Something went wrong. Try again.", err });
@@ -106,11 +126,6 @@ exports.getUserInfo = async (req, res) => {
         message: "User found",
         success: true,
         data: user,
-        //  {
-        //   id: user.id,
-        //   name: user.username,
-        //   email: user.email,
-        // },
       });
     }
   } catch (err) {
@@ -127,7 +142,6 @@ exports.uploadPost = async (req, res, next) => {
     description: req.body.postData.description,
     userId: req.userId,
   };
-  // console.log("DATA", data);
   const post = new postModel(data);
   await post
     .save()
@@ -143,7 +157,6 @@ exports.uploadPost = async (req, res, next) => {
 
 //Get posts
 exports.getPosts = async (req, res, next) => {
-  // console.log(req.userId, "USER ID");
   const posts = await userModel.aggregate([
     {
       $lookup: {
@@ -159,6 +172,7 @@ exports.getPosts = async (req, res, next) => {
         fullName: 1,
         posts: 1,
         profilePic: 1,
+        verifiedUser: 1,
       },
     },
     {
@@ -172,8 +186,12 @@ exports.getPosts = async (req, res, next) => {
         username: 1,
         profilePic: 1,
         posts: 1,
+        verifiedUser: 1,
         isLiked: {
           $in: [mongoose.Types.ObjectId(req.userId), "$posts.likedUsers"],
+        },
+        reported: {
+          $in: [mongoose.Types.ObjectId(req.userId), "$posts.reportedUsers"],
         },
       },
     },
@@ -183,8 +201,11 @@ exports.getPosts = async (req, res, next) => {
       },
     },
   ]);
+  const savedPosts = await savedPostModel
+    .findOne({ userId: req.userId })
+    .populate({path:'savedPosts',populate:"post"}).populate("userId");
   const user = await userModel.findOne({ _id: req.userId });
-  res.status(200).send({ posts: posts, user: user });
+  res.status(200).send({ posts: posts, user: user, savedPosts: savedPosts });
 };
 
 //Delete post
@@ -252,7 +273,32 @@ exports.getAllUsers = async (req, res, next) => {
 exports.followUser = async (req, res) => {
   try {
     let user = await userModel.findOne({ _id: req.params.id });
-    // let loggedUser = await userModel.findOne({_id:req.userId})
+    if (user.followers?.length === 5) {
+      const verifyMessage = {
+        content: `You've achieved ${user.followers?.length} followers.\nNow you can request from your profile to get verified`,
+        date: new Date(),
+        seen: false,
+      };
+      const verifyMessageExist = await userModel.findOne({
+        $and: [
+          { _id: user.id },
+          {
+            $or: [
+              { "unseenNotifications.content": verifyMessage.content },
+              { "seenNotifications.content": verifyMessage.content },
+            ],
+          },
+        ],
+      });
+      if (!verifyMessageExist) {
+        console.log("no msg exist");
+        await userModel.updateOne(
+          { _id: user.id },
+          { $push: { unseenNotifications: verifyMessage } }
+        );
+      }
+    }
+
     user = { ...user, isFollowed: true };
     await userModel
       .updateOne(
@@ -276,6 +322,7 @@ exports.followUser = async (req, res) => {
               { _id: req.params.id },
               { $push: { unseenNotifications: data } }
             );
+            // const users = await userModel.find({_id:{$ne:req.userId}})
             res.status(200).send({ success: true, user: user });
           })
           .catch((err) => {
@@ -318,6 +365,7 @@ exports.getFollowingUsers = async (req, res) => {
                 fullName: 1,
                 username: 1,
                 _id: 1,
+                verifiedUser: 1,
               },
             },
           ],
@@ -362,13 +410,13 @@ exports.getFollowers = async (req, res) => {
                 fullName: 1,
                 username: 1,
                 _id: 1,
+                verifiedUser: 1,
               },
             },
           ],
         },
       },
     ]);
-
     if (users) {
       res.status(200).send({ success: true, users: users });
     } else {
@@ -563,10 +611,10 @@ exports.deleteComment = async (req, res) => {
 //Get user posts
 exports.getUserPosts = async (req, res) => {
   try {
-    const user = await userModel.findOne({ _id: req.userId });
+    const user = await userModel.findOne({ _id: req.params.userId });
     // const posts = await postModel.find({userId:req.userId})
     const posts = await userModel.aggregate([
-      { $match: { _id: mongoose.Types.ObjectId(req.userId) } },
+      { $match: { _id: mongoose.Types.ObjectId(req.params.userId) } },
       {
         $lookup: {
           from: "posts",
@@ -581,6 +629,7 @@ exports.getUserPosts = async (req, res) => {
           fullName: 1,
           posts: 1,
           profilePic: 1,
+          verifiedUser: 1,
         },
       },
       {
@@ -594,8 +643,12 @@ exports.getUserPosts = async (req, res) => {
           username: 1,
           profilePic: 1,
           posts: 1,
+          verifiedUser: 1,
           isLiked: {
-            $in: [mongoose.Types.ObjectId(req.userId), "$posts.likedUsers"],
+            $in: [
+              mongoose.Types.ObjectId(req.params.userId),
+              "$posts.likedUsers",
+            ],
           },
         },
       },
@@ -619,7 +672,7 @@ exports.getUserPosts = async (req, res) => {
 //Get user photos
 exports.getUserPhotos = async (req, res) => {
   try {
-    const userPhotos = await postModel.find({ userId: req.userId });
+    const userPhotos = await postModel.find({ userId: req.params.userId });
     if (userPhotos) {
       res.status(200).send({ success: true, photos: userPhotos });
     } else {
@@ -662,8 +715,10 @@ exports.addProfilePic = async (req, res) => {
       })
       .catch((err) => {
         res.status(200).send({ success: false });
+        console.log(err);
       });
   } catch (err) {
+    console.log(err);
     res.status(500).send({ success: false });
   }
 };
@@ -747,31 +802,132 @@ exports.seenNotifications = async (req, res) => {
       .populate({
         path: "seenNotifications",
         populate: ["userId", "postId"],
-      })
-    let notifications=data.seenNotifications
+      });
+    let notifications = data.seenNotifications;
     // user.unseenNotifications.concat(user.seenNotifications)
-    notifications = notifications.sort((one,two)=>two.date - one.date)
-  //   var out="[";
-  // for(var indx=0;indx<notifications.length-1;indx++){
-  //   out+=JSON.stringify(notifications[indx],null,4)+",";
-  // }
-  // out+=JSON.stringify(notifications[notifications.length-1],null,4)+"]";
+    notifications = notifications.sort((one, two) => two.date - one.date);
+    //   var out="[";
+    // for(var indx=0;indx<notifications.length-1;indx++){
+    //   out+=JSON.stringify(notifications[indx],null,4)+",";
+    // }
+    // out+=JSON.stringify(notifications[notifications.length-1],null,4)+"]";
     res.status(200).json(data);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     res.status(500).json(err);
   }
 };
 
 //Search user
-exports.searchUser = async(req,res)=>{
-  try{
-    const users = await userModel.find({username:{$regex:req.params.text}})
-    const filtered = users.filter((user)=>user._id.toString() !== req.userId)
-    const currentUser = await userModel.findOne({_id:req.userId})
-    res.status(200).json(filtered)
-  }catch(err){
+exports.searchUser = async (req, res) => {
+  try {
+    const currentUser = await userModel.findOne({ _id: req.userId });
+    const users = await userModel
+      .find({
+        $and: [
+          { _id: { $ne: req.userId } },
+          { username: { $regex: req.params.keywords } },
+        ],
+      })
+      .lean();
+
+    const data = users.map((user) => {
+      let isFollowed = currentUser.following.includes(user._id);
+      return { ...user, isFollowed: isFollowed };
+    });
+    // console.log(data,'data')
+
+    res.status(200).json(data);
+  } catch (err) {
     // console.log(err,'error')
-    res.status(500).json(err)
+    res.status(500).json(err);
   }
-}
+};
+
+//Report post
+exports.reportPost = async (req, res) => {
+  
+  const { postId, userId, reportType } = req.body;
+  try {
+    const post = await reportModel.findOne({ postId: postId });
+    await postModel.updateOne(
+      { _id: postId },
+      { $addToSet: { reportedUsers: userId } }
+    );
+    let date = new Date().toString();
+    date = date.slice(4, 15);
+    if (!post) {
+      const report = {
+        postId: postId,
+        reports: [{ userId: req.userId, type: reportType, date: date }],
+      };
+      const reportData = new reportModel(report);
+      await reportData.save();
+      res.status(201).json({ success: true });
+    } else {
+      const report = {
+        type: reportType,
+        userId: req.userId,
+        date: date,
+      };
+      await reportModel.updateOne(
+        { postId: postId },
+        { $addToSet: { reports: report } }
+      );
+      res.status(200).json({ success: true });
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+};
+
+exports.requestVerification = async (req, res) => {
+  try {
+    await userModel.updateOne(
+      { _id: req.params.userId },
+      { $set: { verificationRequest: true } }
+    );
+    res.status(201).json(true);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+};
+
+exports.saveOrUnsavePost = async (req, res) => {
+  try {
+    const savedPosts = await savedPostModel.findOne({ userId: req.userId });
+    if (savedPosts) {
+      if (savedPosts.savedPosts.some((val) => val.post == req.params.postId)) {
+        console.log("unsaved");
+        await savedPostModel.updateOne(
+          { userId: req.userId },
+          { $pull: { savedPosts: { post: req.params.postId } } }
+        );
+        res.status(200).json("unsaved");
+      } else {
+        const data = {
+          post: [req.params.postId],
+          date: new Date(),
+        };
+        await savedPostModel.updateOne(
+          { userId: req.userId },
+          { $push: { savedPosts: data } }
+        );
+        res.status(200).json("saved");
+      }
+    } else {
+      const data = {
+        userId: req.userId,
+        savedPosts: [{ post: req.params.postId, date: new Date() }],
+      };
+      const newPost = savedPostModel(data);
+      await newPost.save();
+      res.status(201).json("saved");
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).json(err);
+  }
+};

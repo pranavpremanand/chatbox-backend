@@ -1,6 +1,6 @@
 const express = require("express");
 const { getMessages, addMessage } = require("../controllers/messageController");
-const authMiddleware = require("../middlewares/authMiddleware");
+const authMiddleware = require("../middlewares/userAuth");
 const router = express.Router();
 
 router.post("/",authMiddleware, addMessage);

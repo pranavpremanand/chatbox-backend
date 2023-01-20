@@ -1,14 +1,6 @@
 const mongoose = require('mongoose')
 
 const userSchema = new mongoose.Schema({
-    // firstName:{
-    //     type:String,
-    //     required:true,
-    // },
-    // lastName:{
-    //     type:String,
-    //     required:true
-    // },
     fullName:{
         type:String,
         required:true
@@ -25,10 +17,10 @@ const userSchema = new mongoose.Schema({
         type:String,
         required:true
     },
-    // requests:[{
-    //     type:mongoose.Schema.Types.ObjectId,ref:'users',
-    //     default:null
-    // }],
+    isActive:{
+        type:Boolean,
+        default:true
+    },
     followers:[{
         type:mongoose.Schema.Types.ObjectId,ref:'users',
         default:null
@@ -79,6 +71,14 @@ const userSchema = new mongoose.Schema({
             type:mongoose.Schema.Types.ObjectId,ref:'posts',
         },
     }],
+    verificationRequest:{
+        type:Boolean,
+        default:false
+    },
+    verifiedUser:{
+        type:Boolean,
+        default:false
+    },
 },{timestamps:true})
 
 const user = mongoose.model('users',userSchema)
