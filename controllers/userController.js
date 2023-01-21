@@ -95,6 +95,7 @@ exports.doSignup = (req, res) => {
 
 //Do login
 exports.doLogin = (req, res, next) => {
+  console.log('hai')
   userHelper
     .doLogin(req.body)
     .then((response) => {
