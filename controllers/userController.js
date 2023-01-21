@@ -733,7 +733,7 @@ exports.updateProfile = async (req, res) => {
         {
           $set: {
             // username:req.body.username,
-            // fullName:req.body.fullName,
+            fullName:req.body.fullName,
             about: req.body.about,
             worksAt: req.body.worksAt,
             livesIn: req.body.livesIn,
