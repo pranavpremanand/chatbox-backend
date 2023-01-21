@@ -39,7 +39,8 @@ const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    // origin: "http://localhost:3000",
+    origin: "http://chatboxonline.netlify.app",
   },
 });
 
@@ -49,7 +50,6 @@ io.on("connection", (socket) => {
   //add new user
   socket.on("new-user-add", (newUserId) => {
     // if user is not added previously
-    console.log(newUserId, "newwwwwwwwwwww");
     if (!activeUsers.some((user) => user.userId === newUserId)) {
       activeUsers.push({
         userId: newUserId,
