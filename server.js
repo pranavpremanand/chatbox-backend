@@ -19,7 +19,7 @@ connection
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://chatboxonline.netlify.app","http://localhost:3000"],
   })
 );
 
@@ -40,9 +40,12 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     // origin: "http://localhost:3000",
-    origin: "http://chatboxonline.netlify.app",
+    origin: ["https://chatboxonline.netlify.app","http://localhost:3000"],
   },
 });
+
+// app.options('*',cors())
+// app.use(cors())
 
 let activeUsers = [];
 
