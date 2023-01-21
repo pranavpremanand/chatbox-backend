@@ -19,7 +19,11 @@ connection
 
 app.use(
   cors({
+<<<<<<< HEAD
     origin: ["https://chatboxonline.netlify.app", "http://localhost:3000"],
+=======
+    origin: ["https://chatboxonline.netlify.app","http://localhost:3000"],
+>>>>>>> 7ec6602b33daebf4614f4411b72b0e39022462fd
   })
 );
 
