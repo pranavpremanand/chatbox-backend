@@ -45,6 +45,7 @@ exports.doSignup = (data) => {
 
 //Do login
 exports.doLogin = (data) => {
+  console.log(data)
   if (data.loginWithOtp) {
     data.usernameOrEmail = data.email;
   }
