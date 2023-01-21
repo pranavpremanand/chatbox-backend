@@ -10,6 +10,7 @@ const mongoose = require("mongoose");
 require("dotenv").config();
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const morgan = require('morgan')
 
 mongoose.connect(process.env.MONGO_URL);
 const connection = mongoose.connection;
@@ -23,9 +24,10 @@ app.use(
     origin: ["https://chatboxonline.netlify.app", "http://localhost:3000"],
   })
 );
-
+app.use(morgan('dev'))
 app.use(cookieParser());
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 // const port = "5000";
 // app.listen(port, () => console.log("Server is running on port:", port));
 
