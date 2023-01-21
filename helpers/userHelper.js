@@ -51,6 +51,7 @@ exports.doLogin = (data) => {
   const response = {};
   return new Promise(async (res, rej) => {
     try {
+      console.log('user check')
       const email = await userModel.findOne({ email: data.usernameOrEmail });
       const username = await userModel.findOne({
         username: data.usernameOrEmail,
