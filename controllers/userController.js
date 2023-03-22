@@ -45,7 +45,6 @@ exports.sendOtp = async (req, res) => {
 //Forgot password - send OTP
 exports.sendLoginOtp = async (req, res) => {
   try {
-    console.log(req.body);
     const user = await userModel.findOne({ email: req.body.email });
     if (user) {
       const response = await otpHelper.sendOtp(user.email);

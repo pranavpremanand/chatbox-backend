@@ -11,7 +11,6 @@ const transporter = nodeMailer.createTransport({
 
 exports.sendOtp = (email) => {
   try {
-    // console.log(transporter,"TRANSPORTER")
     return new Promise(async (resolve, reject) => {
       const otp = `${Math.floor(10000 + Math.random() * 99999)}`;
       const mailOptions = {
@@ -27,7 +26,7 @@ exports.sendOtp = (email) => {
           resolve(response);
         })
         .catch((err) => {
-            console.log("ERROR OTP")
+          console.log("ERROR OTP");
           resolve(err);
         });
     }).catch((err) => {
